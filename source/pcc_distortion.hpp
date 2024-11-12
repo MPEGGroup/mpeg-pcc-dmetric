@@ -145,7 +145,9 @@ namespace pcc_quality {
                              commandPar &cPar,
                              qMetric &qual_metric, 
                              const bool verbose = true,
-                             const double similarPointThreshold = 1e-8 );
+                             const double similarPointThreshold = 1e-8,
+                             std::vector<qMetric>* qual_metric_perPointsA = nullptr,
+                             std::vector<qMetric>* qual_metric_perPointsB = nullptr);
 
 };
 

@@ -382,12 +382,82 @@ void convertRGBtoYUV(int type, const std::array<unsigned char, 3> &in_rgb,
  * \author
  *   Dong Tian, MERL
  */
+
+void setMetricResults(qMetric& metric,
+    const commandPar& cPar,
+    const long& num,
+    const double& pPSNR,
+    const double& c2p_mse_total,
+    const double& c2c_mse_total,
+    const double& c2p_hausdorff,
+    const double& c2c_hausdorff,
+    const double* color_mse_total,
+    const double* color_rgb_hausdorff,
+    const double& reflectance_mse_total,
+    const double& reflectance_hausdorff) {
+    metric.pPSNR = pPSNR;
+
+    metric.c2p_mse = c2p_mse_total / num;
+    metric.c2c_mse = c2c_mse_total / num;
+    metric.c2p_hausdorff = c2p_hausdorff;
+    metric.c2c_hausdorff = c2c_hausdorff;
+
+    // from distance to PSNR. cloudA always the original
+    metric.c2c_psnr = getPSNR(metric.c2c_mse, metric.pPSNR, 3);
+    metric.c2p_psnr = getPSNR(metric.c2p_mse, metric.pPSNR, 3);
+    metric.c2c_hausdorff_psnr = getPSNR(metric.c2c_hausdorff, metric.pPSNR, 3);
+    metric.c2p_hausdorff_psnr = getPSNR(metric.c2p_hausdorff, metric.pPSNR, 3);
+
+    if (cPar.bColor)
+    {
+        metric.color_mse[0] = color_mse_total[0] / num;
+        metric.color_mse[1] = color_mse_total[1] / num;
+        metric.color_mse[2] = color_mse_total[2] / num;
+
+        if (cPar.mseSpace == 1) //YCbCr
+        {
+            metric.color_psnr[0] = getPSNR(metric.color_mse[0], 1.0);
+            metric.color_psnr[1] = getPSNR(metric.color_mse[1], 1.0);
+            metric.color_psnr[2] = getPSNR(metric.color_mse[2], 1.0);
+        }
+        else if (cPar.mseSpace == 0) //RGB
+        {
+            metric.color_psnr[0] = getPSNR(metric.color_mse[0], 255);
+            metric.color_psnr[1] = getPSNR(metric.color_mse[1], 255);
+            metric.color_psnr[2] = getPSNR(metric.color_mse[2], 255);
+        }
+        else if (cPar.mseSpace == 8) // YCoCg-R
+        {
+            metric.color_psnr[0] = getPSNR(metric.color_mse[0], 255);
+            metric.color_psnr[1] = getPSNR(metric.color_mse[1], 511);
+            metric.color_psnr[2] = getPSNR(metric.color_mse[2], 511);
+        }
+
+        metric.color_rgb_hausdorff[0] = color_rgb_hausdorff[0];
+        metric.color_rgb_hausdorff[1] = color_rgb_hausdorff[1];
+        metric.color_rgb_hausdorff[2] = color_rgb_hausdorff[2];
+
+        metric.color_rgb_hausdorff_psnr[0] = getPSNR(metric.color_rgb_hausdorff[0], 255.0);
+        metric.color_rgb_hausdorff_psnr[1] = getPSNR(metric.color_rgb_hausdorff[1], 255.0);
+        metric.color_rgb_hausdorff_psnr[2] = getPSNR(metric.color_rgb_hausdorff[2], 255.0);
+    }
+
+    if (cPar.bLidar)
+    {
+        metric.reflectance_mse = reflectance_mse_total / num;
+        metric.reflectance_psnr = getPSNR(metric.reflectance_mse, std::numeric_limits<unsigned short>::max());
+        metric.reflectance_hausdorff = reflectance_hausdorff;
+        metric.reflectance_hausdorff_psnr = getPSNR(metric.reflectance_hausdorff, std::numeric_limits<unsigned short>::max());
+    }
+}
+
 void findMetric( PccPointCloud& cloudA,
                  PccPointCloud& cloudB,
                  commandPar&    cPar,
                  PccPointCloud& cloudNormalsB,
                  qMetric&       metric,
-                 const double   similarPointThreshold ) {
+                 const double   similarPointThreshold,
+                 std::vector<qMetric>* metricPerPoints = nullptr) {
   mutex myMutex;
 
 #if PRINT_TIMING
@@ -414,6 +484,7 @@ void findMetric( PccPointCloud& cloudA,
   long NbNeighborsDst[num_results_max] = {};
 #endif
 
+  if(metricPerPoints != nullptr)  (*metricPerPoints).resize(cloudA.size);
 #pragma omp parallel for
   for (long i = 0; i < cloudA.size; i++)
   {
@@ -618,64 +689,39 @@ void findMetric( PccPointCloud& cloudA,
         NbNeighborsDst[n]++;
 #endif
 
+    //keep results per point
+    if (metricPerPoints != nullptr) {
+        setMetricResults((*metricPerPoints)[i], //metric
+                         cPar,                  //cPar
+                         1,                     //num
+                         metric.pPSNR,          //pPSNR
+                         distProj,              //c2p_mse_total
+                         distProj_c2c,          //c2c_mse_total
+                         distProj,              //c2p_hausdorff
+                         distProj_c2c,          //c2c_hausdorff
+                         distColor,             //color_mse_total
+                         distColorRGB,          //color_rgb_hausdorff
+                         distReflectance,       //reflectance_mse_total
+                         distReflectance);      //reflectance_hausdorff
+    }
+
     myMutex.unlock();
   }
 #if DUPLICATECOLORS_DEBUG
   cout << " DEBUG: " << NbNeighborsDst[1] << " points (" << (float)NbNeighborsDst[1] * 100.0 / cloudA.size << "%) found with at least 2 neighbors at the same minimum distance" << endl;
 #endif
-
-  metric.c2p_mse = sse_dist_b_c2p / num;
-  metric.c2c_mse = sse_dist_b_c2c / num;
-  metric.c2p_hausdorff = max_dist_b_c2p;
-  metric.c2c_hausdorff = max_dist_b_c2c;
-
-  // from distance to PSNR. cloudA always the original
-  metric.c2c_psnr = getPSNR( metric.c2c_mse, metric.pPSNR, 3 );
-  metric.c2p_psnr = getPSNR( metric.c2p_mse, metric.pPSNR, 3 );
-  metric.c2c_hausdorff_psnr = getPSNR( metric.c2c_hausdorff, metric.pPSNR, 3 );
-  metric.c2p_hausdorff_psnr = getPSNR( metric.c2p_hausdorff, metric.pPSNR, 3 );
-
-  if (cPar.bColor)
-  {
-    metric.color_mse[0] = sse_color[0] / num;
-    metric.color_mse[1] = sse_color[1] / num;
-    metric.color_mse[2] = sse_color[2] / num;
-
-    if (cPar.mseSpace == 1) //YCbCr
-    {
-      metric.color_psnr[0] = getPSNR(metric.color_mse[0], 1.0);
-      metric.color_psnr[1] = getPSNR(metric.color_mse[1], 1.0);
-      metric.color_psnr[2] = getPSNR(metric.color_mse[2], 1.0);
-    }
-    else if (cPar.mseSpace == 0) //RGB
-    {
-      metric.color_psnr[0] = getPSNR(metric.color_mse[0], 255);
-      metric.color_psnr[1] = getPSNR(metric.color_mse[1], 255);
-      metric.color_psnr[2] = getPSNR(metric.color_mse[2], 255);
-    }
-    else if (cPar.mseSpace == 8) // YCoCg-R
-    {
-      metric.color_psnr[0] = getPSNR(metric.color_mse[0], 255);
-      metric.color_psnr[1] = getPSNR(metric.color_mse[1], 511);
-      metric.color_psnr[2] = getPSNR(metric.color_mse[2], 511);
-    }
-
-    metric.color_rgb_hausdorff[0] = max_colorRGB[0];
-    metric.color_rgb_hausdorff[1] = max_colorRGB[1];
-    metric.color_rgb_hausdorff[2] = max_colorRGB[2];
-
-    metric.color_rgb_hausdorff_psnr[0] = getPSNR( metric.color_rgb_hausdorff[0], 255.0 );
-    metric.color_rgb_hausdorff_psnr[1] = getPSNR( metric.color_rgb_hausdorff[1], 255.0 );
-    metric.color_rgb_hausdorff_psnr[2] = getPSNR( metric.color_rgb_hausdorff[2], 255.0 );
-  }
-
-  if (cPar.bLidar)
-  {
-    metric.reflectance_mse = sse_reflectance / num;
-    metric.reflectance_psnr = getPSNR( metric.reflectance_mse, std::numeric_limits<unsigned short>::max() );
-    metric.reflectance_hausdorff = max_reflectance;
-    metric.reflectance_hausdorff_psnr = getPSNR(metric.reflectance_hausdorff, std::numeric_limits<unsigned short>::max() );
-  }
+  setMetricResults(metric,          //metric
+                   cPar,            //cPar
+                   num,             //num
+                   metric.pPSNR,    //pPSNR
+                   sse_dist_b_c2p,  //c2p_mse_total
+                   sse_dist_b_c2c,  //c2c_mse_total
+                   max_dist_b_c2p,  //c2p_hausdorff
+                   max_dist_b_c2c,  //c2c_hausdorff
+                   sse_color,       //color_mse_total
+                   max_colorRGB,    //color_rgb_hausdorff
+                   sse_reflectance, //reflectance_mse_total
+                   max_reflectance);//reflectance_hausdorff
 
 #if PRINT_TIMING
   clock_t t3 = clock();
@@ -764,7 +810,9 @@ void pcc_quality::computeQualityMetric( PccPointCloud& cloudA,
                                         commandPar&    cPar,
                                         qMetric&       qual_metric,
                                         const bool     verbose,
-                                        const double   similarPointThreshold ) {
+                                        const double   similarPointThreshold,
+                                        std::vector<qMetric>* qual_metric_perPointsA,
+                                        std::vector<qMetric>* qual_metric_perPointsB) {
   double pPSNR;
 
   if (cPar.resolution != 0.0)
@@ -844,7 +892,14 @@ void pcc_quality::computeQualityMetric( PccPointCloud& cloudA,
   // Use "a" as reference
   qMetric metricA;
   metricA.pPSNR = pPSNR;
-  findMetric( cloudA, cloudB, cPar, cloudNormalsB, metricA, similarPointThreshold );
+  std::vector<qMetric> metricPerPointsA;
+  std::vector<qMetric> metricPerPointsB;
+  if (qual_metric_perPointsA != nullptr) {
+      findMetric(cloudA, cloudB, cPar, cloudNormalsB, metricA, similarPointThreshold, &metricPerPointsA);
+  }
+  else {
+      findMetric(cloudA, cloudB, cPar, cloudNormalsB, metricA, similarPointThreshold);
+  }
 
   if( verbose ) {
     cout << "1. Use infile1 (A) as reference, loop over A, use normals on B. (A->B).\n";
@@ -900,7 +955,12 @@ void pcc_quality::computeQualityMetric( PccPointCloud& cloudA,
     // Use "b" as reference
     qMetric metricB;
     metricB.pPSNR = pPSNR;
-    findMetric( cloudB, cloudA, cPar, cloudNormalsA, metricB, similarPointThreshold );
+    if (qual_metric_perPointsB != nullptr) {
+        findMetric(cloudB, cloudA, cPar, cloudNormalsA, metricB, similarPointThreshold, &metricPerPointsB);
+    }
+    else {
+        findMetric(cloudB, cloudA, cPar, cloudNormalsA, metricB, similarPointThreshold);
+    }
 
     if( verbose ){
       cout << "2. Use infile2 (B) as reference, loop over B, use normals on A. (B->A).\n";
@@ -1036,5 +1096,19 @@ void pcc_quality::computeQualityMetric( PccPointCloud& cloudA,
         }
       }
     }
+  }
+  else {
+    //if singlePass = 1, set results of A -> B to qual_metric.
+    qual_metric = metricA;
+  }
+  if (qual_metric_perPointsA != nullptr) {
+      for (long i = 0; i < cloudA.size; ++i) {
+          (*qual_metric_perPointsA)[i] = metricPerPointsA[i];
+      }
+  }
+  if (!cPar.singlePass && (qual_metric_perPointsB != nullptr)) {
+      for (long i = 0; i < cloudB.size; ++i) {
+          (*qual_metric_perPointsB)[i] = metricPerPointsB[i];
+      }
   }
 }
