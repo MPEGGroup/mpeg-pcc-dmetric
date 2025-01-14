@@ -124,7 +124,7 @@ namespace pcc_processing {
     typedef Proxy value_type;
     typedef std::ptrdiff_t difference_type;
     typedef Proxy* pointer;
-    typedef Proxy& reference;
+    typedef Proxy reference;
 
     ProxyIterator() : cloud(nullptr), idx() {}
     ProxyIterator(PccPointCloud* cloud) : cloud(cloud), idx() {}
