@@ -2,7 +2,7 @@
 
 The authoritative location of the software is the following git
 repository:
-   <http://mpegx.int-evry.fr/software/MPEG/PCC/mpeg-pcc-dmetric>
+   <https://git.mpeg.expert/MPEG/3dgh/v-pcc/software/mpeg-pcc-dmetric>
 
 Each released version may be identified by a version control system tag in
 the form `release-v0.14.0`.
@@ -10,7 +10,7 @@ the form `release-v0.14.0`.
 An example:
 
 ```console
-$ git clone http://mpegx.int-evry.fr/software/MPEG/PCC/mpeg-pcc-dmetric.git
+$ git clone https://git.mpeg.expert/MPEG/3dgh/v-pcc/software/mpeg-pcc-dmetric
 $ cd mpeg-pcc-dmetric
 ```
 

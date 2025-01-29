@@ -1,8 +1,8 @@
 # General Information
 
 Reference software is being made available to provide a reference
-implementation of the MPEG 3DG G-PCC and V-PCC standard being developed 
-by MPEG (ISO/IEC SC29 WG11). One of the main goals of the reference software
+implementation of the MPEG 3DG V-PCC, G-PCC and V-DMC standards being developed
+by MPEG (ISO/IEC SC29 WG7). One of the main goals of the reference software
 is to provide a basis upon which to conduct experiments in order to determine
 which coding tools provide desired coding performance. It is not meant to be a
 particularly efficient implementation of anything, and one may notice its
@@ -19,5 +19,5 @@ sent to the general MPEG 3DGC email reflector at
 ## Bug reporting
 
 Bugs should be reported on the issue tracker set up at
-<http://mpegx.int-evry.fr/software/MPEG/PCC/mpeg-pcc-dmetric/issues>.
+<https://git.mpeg.expert/MPEG/3dgh/v-pcc/software/mpeg-pcc-dmetric/issues>.
 

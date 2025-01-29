@@ -9,7 +9,7 @@ CMakeLists.txt is provided for cmake to generate makefiles. General practice usi
 
 Bash scripts can be use to build and clean mpeg-pcc-dmetric project:
 - build.sh: build solutions.
-- clear.sh: clear solututions.
+- clear.sh: clear solutions.
 
 ### Build manually
 
@@ -89,4 +89,4 @@ this manual could be generate with the following command line:
 ```
 
 ## Reference
-   MPEG input document M40522, "Updates and Integration of Evaluation Metric Software for PCC"
+   MPEG input document m40522, "Updates and Integration of Evaluation Metric Software for PCC"
