@@ -5,7 +5,7 @@ repository:
    <https://git.mpeg.expert/MPEG/3dgh/v-pcc/software/mpeg-pcc-dmetric>
 
 Each released version may be identified by a version control system tag in
-the form `release-v0.14.0`.
+the form `release-v0.14.2`.
 
 An example:
 

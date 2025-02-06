@@ -28,7 +28,7 @@ Standard CMake build commands can be used to build the software depending on the
 The parameter of the pc_error softare are the following ones:
 
 ```
-PCC quality measurement software, version 0.14.0
+PCC quality measurement software, version 0.14.2
 
 Error: File 1 parameters not correct
 Error: File 2 parameters not correct
